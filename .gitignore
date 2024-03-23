@@ -23,6 +23,8 @@ go.work
 # IDE files
 /.idea
 /.vscode
+/bin
+/tmp
 
 /logs
 /old
