@@ -1,16 +1,16 @@
 package config
 
 import (
-	"github.com/pushgate/core/pkg/tron"
+	"github.com/stedigate/core/pkg/tron"
 	"time"
 
-	"github.com/pushgate/core/pkg/encryption"
-	"github.com/pushgate/core/pkg/jwt"
-	"github.com/pushgate/core/pkg/logger"
-	"github.com/pushgate/core/pkg/mailer"
-	"github.com/pushgate/core/pkg/postgresql"
+	"github.com/stedigate/core/pkg/encryption"
+	"github.com/stedigate/core/pkg/jwt"
+	"github.com/stedigate/core/pkg/logger"
+	"github.com/stedigate/core/pkg/mailer"
+	"github.com/stedigate/core/pkg/postgresql"
 
-	"github.com/pushgate/core/pkg/redis"
+	"github.com/stedigate/core/pkg/redis"
 )
 
 func Default() *Config {

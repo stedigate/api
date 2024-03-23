@@ -2,7 +2,7 @@ package data
 
 import (
 	"errors"
-	"github.com/pushgate/core/pkg/postgresql"
+	"github.com/stedigate/core/pkg/postgresql"
 )
 
 // ErrRecordNotFound Define a custom ErrRecordNotFound error. We'll return this from our Get() method when

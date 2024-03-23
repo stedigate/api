@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/pushgate/core/pkg/validator"
+	"github.com/stedigate/core/pkg/validator"
 )
 
 type CreatePaymentRequest struct {

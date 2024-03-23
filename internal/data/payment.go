@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/pushgate/core/pkg/postgresql"
+	"github.com/stedigate/core/pkg/postgresql"
 	"time"
 )
 

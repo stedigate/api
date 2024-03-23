@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pushgate/core/internal/data"
+	"github.com/stedigate/core/internal/data"
 )
 
 // Declare a handler which writes a plain-text response with information about the

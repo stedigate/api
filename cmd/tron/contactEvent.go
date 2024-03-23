@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pushgate/core/internal/config"
-	"github.com/pushgate/core/pkg/redis"
-	"github.com/pushgate/core/pkg/tron"
 	"github.com/redis/rueidis"
+	"github.com/stedigate/core/internal/config"
+	"github.com/stedigate/core/pkg/redis"
+	"github.com/stedigate/core/pkg/tron"
 )
 
 // Run Event holds the configuration for the event service.

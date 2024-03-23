@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/pushgate/core/cmd/tron"
 	"github.com/spf13/cobra"
+	"github.com/stedigate/core/cmd/tron"
 )
 
 // trc20EventsCmd represents the tronTrc20Events command

@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/pushgate/core/cmd/api"
 	"github.com/spf13/cobra"
+	"github.com/stedigate/core/cmd/api"
 )
 
 var Port int

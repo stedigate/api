@@ -1,4 +1,4 @@
-module github.com/pushgate/core
+module github.com/stedigate/core
 
 go 1.22.0
 
