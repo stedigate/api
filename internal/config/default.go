@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/stedigate/core/pkg/solana"
 	"github.com/stedigate/core/pkg/tron"
 	"time"
 
@@ -89,6 +90,12 @@ MCowBQYDK2VwAyEA1JsMvBD61BAYv8+JZtvex1K7Y1CgYeNnO9WMhgxNrv8=
 			Trc20ContractCurrency: "TRX",
 			Trc20ContractDecimals: 6,
 			Trc20ContractFeeLimit: 300000,
+		},
+		Solana: &solana.Config{
+			TrongridApiUrl:   "https://api.shasta.trongrid.io",
+			TrongridApiKey:   "fbb27dd1-4ce1-47c3-8048-230266f64b29",
+			USDCTokenAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			USDTTokenAddress: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
 		},
 	}
 }

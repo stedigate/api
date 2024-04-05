@@ -1,17 +1,28 @@
-package tron
+package solana
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/redis/rueidis"
+	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
 	"github.com/stedigate/core/pkg/redis"
-	"github.com/stedigate/core/pkg/tron"
+	"github.com/stedigate/core/pkg/solana"
 )
 
-// Run Event holds the configuration for the event service.
-func Run() {
+// GetTransactionCmd represents the tronTrc20Events command
+var GetTransactionCmd = &cobra.Command{
+	Use:   "track",
+	Short: "Fetches TRC20 events from the Tron blockchain.",
+	Long:  `Fetches TRC20 events from the Tron blockchain. It can be used to fetch all events from a specific contract address.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		getTransaction()
+	},
+}
+
+// getTransaction Event holds the configuration for the event service.
+func getTransaction() {
 	cfg := config.Load(false)
 
 	r, err := redis.New(cfg.Redis)
@@ -19,7 +30,7 @@ func Run() {
 		panic(err)
 	}
 
-	t, err := tron.New(cfg.Tron, r)
+	t, err := solana.New(cfg.Solana, r)
 	if err != nil {
 		panic(err)
 	}
@@ -42,5 +53,5 @@ func Run() {
 		r.Do(context.Background(), cmd)
 	}
 
-	fmt.Println("%v", events)
+	fmt.Printf("%v\n", events)
 }

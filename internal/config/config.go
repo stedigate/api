@@ -7,6 +7,7 @@ import (
 	"github.com/stedigate/core/pkg/mailer"
 	"github.com/stedigate/core/pkg/postgresql"
 	"github.com/stedigate/core/pkg/redis"
+	"github.com/stedigate/core/pkg/solana"
 	"github.com/stedigate/core/pkg/tron"
 )
 
@@ -21,4 +22,5 @@ type Config struct {
 	Jwt        *jwt.Config        `koanf:"jwt"`
 	Encryption *encryption.Config `koanf:"encryption"`
 	Tron       *tron.Config       `koanf:"tron"`
+	Solana     *solana.Config     `koanf:"solana"`
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/stedigate/core/cmd/tron"
 
 	"github.com/spf13/cobra"
 )
@@ -18,6 +19,7 @@ var tronCmd = &cobra.Command{
 }
 
 func init() {
+	tronCmd.AddCommand(tron.Trc20EventsCmd)
 	rootCmd.AddCommand(tronCmd)
 
 	// Here you will define your flags and configuration settings.
