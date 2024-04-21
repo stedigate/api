@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
+	"github.com/stedigate/core/pkg/blockchains/solana"
 	"github.com/stedigate/core/pkg/redis"
-	"github.com/stedigate/core/pkg/solana"
 )
 
 // BalanceCmd represents the tronTrc20Events command

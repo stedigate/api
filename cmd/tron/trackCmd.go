@@ -7,8 +7,8 @@ import (
 	"github.com/redis/rueidis"
 	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
+	"github.com/stedigate/core/pkg/blockchains/tron"
 	"github.com/stedigate/core/pkg/redis"
-	"github.com/stedigate/core/pkg/tron"
 )
 
 // Trc20EventsCmd represents the tronTrc20Events command

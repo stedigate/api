@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
+	"github.com/stedigate/core/pkg/blockchains/tron"
 	"github.com/stedigate/core/pkg/redis"
-	"github.com/stedigate/core/pkg/tron"
 )
 
 // SimulateCmd represents the tronTrc20Events command

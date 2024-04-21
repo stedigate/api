@@ -6,7 +6,7 @@ import (
 	"github.com/redis/rueidis"
 	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
-	"github.com/stedigate/core/pkg/ethereum"
+	"github.com/stedigate/core/pkg/blockchains/ethereum"
 	"github.com/stedigate/core/pkg/redis"
 	"log"
 )
