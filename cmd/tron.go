@@ -20,6 +20,9 @@ var tronCmd = &cobra.Command{
 
 func init() {
 	tronCmd.AddCommand(tron.Trc20EventsCmd)
+	tronCmd.AddCommand(tron.BalanceCmd)
+	tronCmd.AddCommand(tron.TransferCmd)
+	tronCmd.AddCommand(tron.SimulateCmd)
 	rootCmd.AddCommand(tronCmd)
 
 	// Here you will define your flags and configuration settings.

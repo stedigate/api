@@ -1,28 +1,41 @@
-package solana
+package tron
 
 import (
 	"context"
 	"errors"
-	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/redis/rueidis"
 	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
 	"github.com/stedigate/core/pkg/redis"
-	"github.com/stedigate/core/pkg/solana"
+	"github.com/stedigate/core/pkg/tron"
 )
 
-// GetTransactionCmd represents the tronTrc20Events command
-var GetTransactionCmd = &cobra.Command{
+// Trc20EventsCmd represents the tronTrc20Events command
+var Trc20EventsCmd = &cobra.Command{
 	Use:   "track",
 	Short: "Fetches TRC20 events from the Tron blockchain.",
 	Long:  `Fetches TRC20 events from the Tron blockchain. It can be used to fetch all events from a specific contract address.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		getTransaction()
+		getEvents()
 	},
 }
 
-// getTransaction Event holds the configuration for the event service.
-func getTransaction() {
+func init() {
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// tronTrc20EventsCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// tronTrc20EventsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+// Run Event holds the configuration for the event service.
+func getEvents() {
 	cfg := config.Load(false)
 
 	r, err := redis.New(cfg.Redis)
@@ -30,7 +43,7 @@ func getTransaction() {
 		panic(err)
 	}
 
-	t, err := solana.New(cfg.Solana, r)
+	t, err := tron.New(cfg.Tron, r)
 	if err != nil {
 		panic(err)
 	}
@@ -53,5 +66,5 @@ func getTransaction() {
 		r.Do(context.Background(), cmd)
 	}
 
-	fmt.Printf("%v\n", events)
+	spew.Dump(events)
 }

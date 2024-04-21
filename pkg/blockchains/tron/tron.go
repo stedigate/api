@@ -3,12 +3,23 @@ package tron
 import (
 	"encoding/json"
 	"fmt"
+	tronWallet "github.com/ranjbar-dev/tron-wallet"
+	"github.com/ranjbar-dev/tron-wallet/enums"
 	"github.com/redis/rueidis"
 	"io"
+	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
+
+const getEventsByContract = "/v1/contracts/%s/events"
+const getBalanceURL = "/wallet/getaccount"
+const GET_BALANCE_URL = "/v1/accounts/%s/balances"
+const CREATED_TRANSACTION = "/wallet/createtransaction"
+
+var usdtToken *tronWallet.Token
 
 type Tron struct {
 	redis  rueidis.Client
@@ -20,6 +31,14 @@ type UsdtTransaction struct {
 }
 
 func New(cfg *Config, r rueidis.Client) (*Tron, error) {
+	err := os.Setenv("TRON_PRO_API_KEY", cfg.TrongridApiKey)
+	if err != nil {
+		return nil, err
+	}
+	usdtToken = &tronWallet.Token{
+		ContractAddress: enums.ContractAddress(cfg.USDTAddress),
+	}
+
 	t := &Tron{
 		redis:  r,
 		config: cfg,
@@ -29,8 +48,7 @@ func New(cfg *Config, r rueidis.Client) (*Tron, error) {
 }
 
 func (t *Tron) GetContractEvents(lastScannedTrxID string) ([]TransferEvent, error) {
-	url := "/v1/contracts/" + t.config.Trc20ContractAddress + "/events"
-
+	url := fmt.Sprintf(getEventsByContract, t.config.USDTAddress)
 	body := map[string]interface{}{
 		"only_confirmed": true,
 		"limit":          200,
@@ -74,8 +92,6 @@ func (t *Tron) GetContractEvents(lastScannedTrxID string) ([]TransferEvent, erro
 			if te.TransactionID == lastScannedTrxID {
 				return events, nil
 			}
-
-			fmt.Println(te.TransactionID)
 			events = append(events, te)
 		}
 
@@ -93,14 +109,54 @@ func (t *Tron) GetTransactionInfo(txId string) ([]map[string]interface{}, error)
 	return nil, nil
 }
 
-func (t *Tron) GetTrxBalance(address string) ([]map[string]interface{}, error) {
+func (t *Tron) GetBalance(address, currency string) (*big.Float, error) {
+	w, err := t.createWalletFromAddress(address)
+	if err != nil {
+		return new(big.Float), err
+	}
 
-	return nil, nil
+	switch currency {
+	case "TRX":
+
+		balance, err := w.Balance()
+		if err != nil {
+			return new(big.Float), err
+		}
+		divisor := new(big.Float).SetPrec(128).SetFloat64(1e6)
+		result := new(big.Float)
+		result.Quo(new(big.Float).SetInt64(balance), divisor)
+		return result, nil
+	case "USDT":
+		balance, err := w.BalanceTRC20(usdtToken)
+		if err != nil {
+			return new(big.Float), err
+		}
+		divisor := new(big.Float).SetPrec(128).SetFloat64(1e6)
+		result := new(big.Float)
+		result.Quo(new(big.Float).SetInt64(balance), divisor)
+		return result, nil
+	default:
+		return nil, fmt.Errorf("unsupported currency")
+	}
 }
 
-func (t *Tron) GetContractBalance(address string) ([]map[string]interface{}, error) {
+func (t *Tron) createWalletFromAddress(address string) (*tronWallet.TronWallet, error) {
+	node := enums.Node(t.config.TrongridGrpcUrl)
+	var w *tronWallet.TronWallet
+	var err error
+	if len(address) == 34 {
+		w = &tronWallet.TronWallet{
+			Node:          node,
+			Address:       "",
+			AddressBase58: address,
+			PrivateKey:    "",
+			PublicKey:     address,
+		}
+	} else {
+		w, err = tronWallet.CreateTronWallet(node, address)
+	}
 
-	return nil, nil
+	return w, err
 }
 
 func (t *Tron) GetTransactions(address string) ([]map[string]interface{}, error) {
@@ -133,14 +189,101 @@ func (t *Tron) ValidateAddress(address string) (bool, error) {
 	return data["result"].(bool), nil
 }
 
-func (t *Tron) SendTrx(src Wallet, dest string, amount float64) ([]map[string]interface{}, error) {
-
-	return nil, nil
+func (t *Tron) Send(src, dest, currency string, amount uint64) (string, error) {
+	switch currency {
+	case "TRX":
+		return t.sendTrx(src, dest, amount)
+	case "USDT":
+		return t.sendTrc20(src, dest, amount)
+	default:
+		return "", fmt.Errorf("unsupported currency")
+	}
 }
 
-func (t *Tron) SendUsdt(src Wallet, dest string, amount float64) ([]map[string]interface{}, error) {
+func (t *Tron) sendTrx(src, dest string, a uint64) (string, error) {
+	w, err := t.createWalletFromAddress(src)
+	if err != nil {
+		return "", err
+	}
 
-	return nil, nil
+	txId, err := w.Transfer(dest, int64(a*1e6))
+	if err != nil {
+		return "", err
+	}
+
+	return txId, nil
+}
+
+func (t *Tron) sendTrc20(src, dest string, a uint64) (string, error) {
+	w, err := t.createWalletFromAddress(src)
+	if err != nil {
+		return "", err
+	}
+
+	txId, err := w.TransferTRC20(usdtToken, dest, int64(a*1e6))
+	if err != nil {
+		return "", err
+	}
+
+	return txId, nil
+}
+
+func (t *Tron) SimulateSend(src, dest, currency string, amount uint64) (*big.Float, error) {
+	w, err := t.createWalletFromAddress(src)
+	if err != nil {
+		return new(big.Float), err
+	}
+
+	switch currency {
+	case "TRX":
+		feeInSun, err := w.EstimateTransferFee(dest, int64(amount*1e6))
+		if err != nil {
+			return new(big.Float), err
+		}
+		divisor := new(big.Float).SetPrec(128).SetFloat64(1e6)
+		result := new(big.Float)
+		result.Quo(new(big.Float).SetInt64(feeInSun), divisor)
+		return result, nil
+	case "USDT":
+		feeInSun, err := w.EstimateTransferTRC20Fee()
+		if err != nil {
+			return new(big.Float), err
+		}
+		divisor := new(big.Float).SetPrec(128).SetFloat64(1e6)
+		result := new(big.Float)
+		result.Quo(new(big.Float).SetInt64(feeInSun), divisor)
+		return result, nil
+	default:
+		return new(big.Float), fmt.Errorf("unsupported currency")
+	}
+}
+
+func (t *Tron) simulateSendTrx(src, dest string, a uint64) (string, error) {
+	w, err := t.createWalletFromAddress(src)
+	if err != nil {
+		return "", err
+	}
+
+	txId, err := w.Transfer(dest, int64(a*1e6))
+	if err != nil {
+		return "", err
+	}
+
+	return txId, nil
+}
+
+func (t *Tron) simulateSendTrc20(src, dest string, a uint64) (string, error) {
+	w, err := t.createWalletFromAddress(src)
+	if err != nil {
+		return "", err
+	}
+
+	txId, err := w.TransferTRC20(usdtToken, dest, int64(a*1e6))
+	if err != nil {
+		return "", err
+	}
+
+	return txId, nil
 }
 
 func (t *Tron) generateJwtToken() (string, error) {
@@ -189,8 +332,6 @@ func (t *Tron) sendRequest(path string, body map[string]interface{}, method stri
 			q.Add(key, fmt.Sprint(value))
 		}
 		req.URL.RawQuery = q.Encode()
-
-		fmt.Println(req.URL.String())
 	} else {
 		payload, _ := json.Marshal(body)
 		req.Body = io.NopCloser(strings.NewReader(string(payload)))

@@ -1,14 +1,16 @@
 package config
 
 import (
+	"github.com/stedigate/core/pkg/blockchains/avalanche"
+	"github.com/stedigate/core/pkg/blockchains/ethereum"
+	"github.com/stedigate/core/pkg/blockchains/solana"
+	"github.com/stedigate/core/pkg/blockchains/tron"
 	"github.com/stedigate/core/pkg/encryption"
 	"github.com/stedigate/core/pkg/jwt"
 	"github.com/stedigate/core/pkg/logger"
 	"github.com/stedigate/core/pkg/mailer"
 	"github.com/stedigate/core/pkg/postgresql"
 	"github.com/stedigate/core/pkg/redis"
-	"github.com/stedigate/core/pkg/solana"
-	"github.com/stedigate/core/pkg/tron"
 )
 
 type Config struct {
@@ -23,4 +25,6 @@ type Config struct {
 	Encryption *encryption.Config `koanf:"encryption"`
 	Tron       *tron.Config       `koanf:"tron"`
 	Solana     *solana.Config     `koanf:"solana"`
+	Ethereum   *ethereum.Config   `koanf:"ethereum"`
+	Avalanche  *avalanche.Config  `koanf:"avalanche"`
 }
