@@ -9,6 +9,7 @@ import (
 	"github.com/stedigate/core/internal/config"
 	"github.com/stedigate/core/pkg/blockchains/tron"
 	"github.com/stedigate/core/pkg/redis"
+	"strconv"
 )
 
 // Trc20EventsCmd represents the tronTrc20Events command
@@ -48,21 +49,29 @@ func getEvents() {
 		panic(err)
 	}
 
-	cmd := r.B().Get().Key("tron:events:trc20:last_transaction_id").Build()
-	lastScannedTrxID, err := r.Do(context.Background(), cmd).ToString()
+	cacheKey := "tron:events:trc20:last_scanned_block"
+	cmd := r.B().Get().Key(cacheKey).Build()
+	lastScannedBlock, err := r.Do(context.Background(), cmd).ToInt64()
 	if err != nil {
 		if !errors.Is(err, rueidis.Nil) {
 			panic(err)
 		}
 	}
-	events, err := t.GetContractEvents(lastScannedTrxID)
+	if lastScannedBlock == 0 {
+		lastScannedBlock, err = t.GetCurrentBlock()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	events, err := t.GetLatestTokenTransactions(cfg.Tron.USDTAddress, lastScannedBlock)
 	if err != nil {
 		panic(err)
 	}
 
 	if len(events) != 0 {
-		latestTrxID := events[0].TransactionID
-		cmd = r.B().Set().Key("tron:events:trc20:last_transaction_id").Value(latestTrxID).Build()
+		lastBlock := strconv.FormatInt(events[0].BlockNumber, 10)
+		cmd = r.B().Set().Key(cacheKey).Value(lastBlock).Build()
 		r.Do(context.Background(), cmd)
 	}
 
