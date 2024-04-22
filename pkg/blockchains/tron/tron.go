@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	tronWallet "github.com/ranjbar-dev/tron-wallet"
 	"github.com/ranjbar-dev/tron-wallet/enums"
-	"github.com/redis/rueidis"
+	"github.com/redis/go-redis/v9"
 	"github.com/stedigate/core/pkg/blockchains"
 	"io"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"os"
@@ -19,7 +19,7 @@ import (
 )
 
 const GetEventsByContractAddressURL = "/v1/contracts/%s/events"
-const GetNowBlockURL = "/walletsolidity/getnowblock"
+const GetNowBlockURL = "/walletsolidity/getblock"
 const getBalanceURL = "/wallet/getaccount"
 const GET_BALANCE_URL = "/v1/accounts/%s/balances"
 const CREATED_TRANSACTION = "/wallet/createtransaction"
@@ -27,15 +27,16 @@ const CREATED_TRANSACTION = "/wallet/createtransaction"
 var usdtToken *tronWallet.Token
 
 type Tron struct {
-	redis  rueidis.Client
+	redis  *redis.Client
 	config *Config
+	log    *slog.Logger
 }
 
 type UsdtTransaction struct {
 	ID string
 }
 
-func New(cfg *Config, r rueidis.Client) (*Tron, error) {
+func New(cfg *Config, r *redis.Client, l *slog.Logger) (*Tron, error) {
 	err := os.Setenv("TRON_PRO_API_KEY", cfg.TrongridApiKey)
 	if err != nil {
 		return nil, err
@@ -47,6 +48,7 @@ func New(cfg *Config, r rueidis.Client) (*Tron, error) {
 	t := &Tron{
 		redis:  r,
 		config: cfg,
+		log:    l,
 	}
 
 	return t, nil
@@ -54,46 +56,31 @@ func New(cfg *Config, r rueidis.Client) (*Tron, error) {
 
 func (t *Tron) GetLatestTokenTransactions(token string, blockNumber int64) ([]Transaction, error) {
 	cacheKey := "tron:wallets"
-	url := fmt.Sprintf(GetEventsByContractAddressURL, token)
-	body := map[string]interface{}{
-		"only_confirmed": true,
-		"limit":          200,
-		"order_by":       "block_timestamp,desc",
-		"event_name":     "Transfer",
-	}
-
-	if blockNumber > 0 {
-		body["block_number"] = blockNumber
-	}
-
-	spew.Dump(body)
 	var transactions []Transaction
 
+	currentBlock, err := t.GetCurrentBlock()
+	if err != nil {
+		return transactions, fmt.Errorf("unable to get current block: %w", err)
+	}
+	fingerprint := ""
+	t.log.Info("scanning blocks", slog.Int64("start_block_number", blockNumber), slog.Int64("end_block_number", currentBlock))
 	for {
-		res, err := t.sendRequest(url, body, "GET")
+		data, err := t.getEventsByContractAddress(token, blockNumber, fingerprint)
 		if err != nil {
 			return transactions, fmt.Errorf("unable to send request: %w", err)
 		}
 
-		var data GetEventsByContractAddressResponse
-		err = json.Unmarshal(res, &data)
-		if err != nil {
-			return transactions, fmt.Errorf("unable to unmarshal response: %w", err)
-		}
-
-		if data.Success != true {
-			return transactions, fmt.Errorf("request failed: %v", data)
-		}
 		events := make(chan Transaction, 10)
 		var wg sync.WaitGroup
 		for _, ev := range data.Data {
 			wg.Add(1)
 			go func() {
-				exists, err := t.redis.Do(context.Background(), t.redis.B().Smismember().Key(cacheKey).Member(ev.Result.To).Build()).ToBool()
+				exists, err := t.redis.SIsMember(context.Background(), cacheKey, ev.Result.To).Result()
 				if err != nil {
 					panic(err)
 				}
 				if exists {
+					t.log.Warn("detect transaction destination address", slog.Int64("block", ev.BlockNumber), slog.String("to", ev.Result.To))
 					te := Transaction{
 						TxID:            ev.TransactionId,
 						BlockNumber:     ev.BlockNumber,
@@ -119,14 +106,59 @@ func (t *Tron) GetLatestTokenTransactions(token string, blockNumber int64) ([]Tr
 			transactions = append(transactions, trx)
 		}
 
-		fingerprint := data.Meta.Fingerprint
-		if fingerprint != "" {
-			body["fingerprint"] = fingerprint
-			<-time.After(1 * time.Second)
+		key := "tron:events:trc20:last_scanned_block"
+		err = t.redis.Set(context.Background(), key, blockNumber, time.Hour*24).Err()
+		if err != nil {
+			panic(err)
+		}
+
+		if data.Meta.Fingerprint != "" {
+			fingerprint = data.Meta.Fingerprint
+			<-time.After(50 * time.Millisecond)
+		} else if currentBlock >= blockNumber {
+			blockNumber++
+			<-time.After(50 * time.Millisecond)
 		} else {
 			return transactions, nil
 		}
 	}
+}
+
+func (t *Tron) getEventsByContractAddress(token string, blockNumber int64, fingerprint string) (*GetEventsByContractAddressResponse, error) {
+	url := fmt.Sprintf(GetEventsByContractAddressURL, token)
+	body := map[string]interface{}{
+		"only_confirmed": true,
+		"limit":          200,
+		"order_by":       "block_timestamp,desc",
+		"event_name":     "Transfer",
+		"visible":        true,
+	}
+
+	if blockNumber > 0 {
+		body["block_number"] = blockNumber
+	}
+
+	if fingerprint != "" {
+		body["fingerprint"] = fingerprint
+	}
+
+	t.log.Info("scanning block number", slog.Int64("block_number", blockNumber))
+	res, err := t.sendRequest(url, body, "GET")
+	if err != nil {
+		return nil, fmt.Errorf("unable to send request: %w", err)
+	}
+
+	var data GetEventsByContractAddressResponse
+	err = json.Unmarshal(res, &data)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal response: %w", err)
+	}
+
+	if data.Success != true {
+		return nil, fmt.Errorf("request failed: %v", data)
+	}
+
+	return &data, nil
 }
 
 func (t *Tron) GetCurrentBlock() (int64, error) {

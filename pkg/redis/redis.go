@@ -2,32 +2,35 @@ package redis
 
 import (
 	"context"
+	"github.com/redis/go-redis/v9"
 	"strconv"
 	"time"
-
-	"github.com/redis/rueidis"
 )
 
-func New(cfg *Config) (rueidis.Client, error) {
-	client, err := rueidis.NewClient(rueidis.ClientOption{
-		InitAddress: []string{cfg.Host + ":" + strconv.Itoa(cfg.Port)},
-		Password:    cfg.Password, // no password set
-		SelectDB:    cfg.Db,       // use default DB
+func New(cfg *Config) (*redis.Client, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     cfg.Host + ":" + strconv.Itoa(cfg.Port),
+		Password: cfg.Password, // no password set
+		DB:       cfg.Db,       // use default DB
+		PoolSize: cfg.PoolSize,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	client.Do(ctx, client.B().Ping().Build())
-
-	client.Do(ctx, client.B().Set().Key("foo").Value("bar").Build())
-
-	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err = client.Do(context.Background(), client.B().Get().Key("foo").Build()).ToString()
+	client.Ping(ctx)
+	err := client.Set(ctx, "foo", "bar", 0).Err()
 	if err != nil {
-		return nil, err
+		panic(err)
+	}
+
+	val, err := client.Get(ctx, "foo").Result()
+	if err != nil {
+		panic(err)
+	}
+
+	if val != "bar" {
+		panic("redis connection failed")
 	}
 
 	return client, nil

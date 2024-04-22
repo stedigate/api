@@ -6,7 +6,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/gagliardetto/solana-go/rpc/ws"
-	"github.com/redis/rueidis"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 	"log"
 	"math/big"
@@ -14,7 +14,7 @@ import (
 )
 
 type Solana struct {
-	redis  rueidis.Client
+	redis  *redis.Client
 	config *Config
 	rpc    *rpc.Client
 	ws     *ws.Client
@@ -24,7 +24,7 @@ type UsdtTransaction struct {
 	ID string
 }
 
-func New(cfg *Config, r rueidis.Client) (*Solana, error) {
+func New(cfg *Config, r *redis.Client) (*Solana, error) {
 	rpcClient := rpc.NewWithCustomRPCClient(rpc.NewWithLimiter(cfg.RpcUrl, rate.Every(time.Second), 5))
 	wsClient, err := ws.Connect(context.Background(), cfg.WssUrl)
 	if err != nil {

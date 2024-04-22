@@ -5,7 +5,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
 	"github.com/stedigate/core/pkg/blockchains/tron"
+	"github.com/stedigate/core/pkg/logger"
 	"github.com/stedigate/core/pkg/redis"
+	"log/slog"
+	"os"
 )
 
 // BalanceCmd represents the tronTrc20Events command
@@ -20,7 +23,8 @@ var BalanceCmd = &cobra.Command{
 			panic(err)
 		}
 
-		t, err := tron.New(cfg.Tron, r)
+		l := logger.NewLogger(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: false}))
+		t, err := tron.New(cfg.Tron, r, l)
 		if err != nil {
 			panic(err)
 		}

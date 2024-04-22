@@ -9,6 +9,7 @@ import (
 	"github.com/stedigate/core/pkg/blockchains/ethereum"
 	"github.com/stedigate/core/pkg/redis"
 	"log"
+	"time"
 )
 
 // GetTransactionCmd represents the tronTrc20Events command
@@ -35,8 +36,8 @@ func getTransaction() {
 		panic(err)
 	}
 
-	cmd := r.B().Get().Key("ethereum:events:erc20:usdt:last_transaction_id").Build()
-	lastScannedTrxID, err := r.Do(context.Background(), cmd).ToString()
+	cacheKey := "ethereum:events:erc20:usdt:last_transaction_id"
+	lastScannedTrxID, err := r.Get(context.Background(), cacheKey).Result()
 	if err != nil {
 		if !errors.Is(err, rueidis.Nil) {
 			panic(err)
@@ -49,8 +50,10 @@ func getTransaction() {
 
 	if len(events) != 0 {
 		latestTrxID := events[0].Hash
-		cmd = r.B().Set().Key("ethereum:events:erc20:usdt:last_transaction_id").Value(latestTrxID).Build()
-		r.Do(context.Background(), cmd)
+		err = r.Set(context.Background(), cacheKey, latestTrxID, time.Hour*24).Err()
+		if err != nil {
+			panic(err)
+		}
 	}
 	/*
 		cmd = r.B().Get().Key("ethereum:events:erc20:usdc:last_transaction_id").Build()

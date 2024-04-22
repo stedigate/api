@@ -19,7 +19,7 @@ var tronCmd = &cobra.Command{
 }
 
 func init() {
-	tronCmd.AddCommand(tron.Trc20EventsCmd)
+	tronCmd.AddCommand(tron.TrackTrc20Cmd)
 	tronCmd.AddCommand(tron.BalanceCmd)
 	tronCmd.AddCommand(tron.TransferCmd)
 	tronCmd.AddCommand(tron.SimulateCmd)

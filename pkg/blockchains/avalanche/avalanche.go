@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/nanmu42/etherscan-api"
-	"github.com/redis/rueidis"
+	"github.com/redis/go-redis/v9"
 	"io"
 	"log"
 	"math/big"
@@ -20,7 +20,7 @@ import (
 const balanceOfABI = `[{constant: true, inputs: [{name: "_owner", type: "address"}], name: "balanceOf", outputs: [{name: "balance", type: "uint256"}], payable: false, stateMutability: "view", type: "function"}]`
 
 type Avalanche struct {
-	redis  rueidis.Client
+	redis  *redis.Client
 	config *Config
 	esc    *etherscan.Client
 	ec     *ethclient.Client
@@ -30,7 +30,7 @@ type UsdtTransaction struct {
 	ID string
 }
 
-func New(cfg *Config, r rueidis.Client) (*Avalanche, error) {
+func New(cfg *Config, r *redis.Client) (*Avalanche, error) {
 	ethClient := etherscan.New(etherscan.Mainnet, cfg.ApiKey)
 	nodeURL := cfg.ApiUrl + cfg.ApiKey
 	client, err := ethclient.Dial(nodeURL)
