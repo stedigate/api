@@ -6,4 +6,5 @@ var (
 	destPublicKey string
 	currency      string
 	publicKey     string
+	block         int64
 )

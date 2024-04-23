@@ -10,14 +10,29 @@ import (
 	"os/signal"
 )
 
-// GetTransactionCmd represents the tronTrc20Events command
-var GetTransactionCmd = &cobra.Command{
+// TrackCmd represents the tronTrc20Events command
+var TrackCmd = &cobra.Command{
 	Use:   "track",
 	Short: "Fetches USDT/C events from the Solana blockchain.",
 	Long:  `Fetches USDT/C events from the Solana blockchain. It can be used to fetch all events from a specific contract address.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		getTransaction()
 	},
+}
+
+func init() {
+
+	TrackCmd.Flags().Int64VarP(&block, "block", "b", 1, "start block number")
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// tronTrc20EventsCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// tronTrc20EventsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // getTransaction Event holds the configuration for the event service.

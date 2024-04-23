@@ -45,6 +45,7 @@ go run . tron balance -c TRX -w TRGWbaVcixGSQbWzztvQm58n4zti2BitgD
 go run . tron balance -c USDT -w TRGWbaVcixGSQbWzztvQm58n4zti2BitgD
 go run . tron transfer -a 10 -c TRX -d TRGWbaVcixGSQbWzztvQm58n4zti2BitgD -s d4c10efce84ed7023abd7193eda45aa300c9ce890746ea5d0fc281bc3f4f5d46
 go run . tron transfer -a 10 -c USDT -d TRGWbaVcixGSQbWzztvQm58n4zti2BitgD -s d4c10efce84ed7023abd7193eda45aa300c9ce890746ea5d0fc281bc3f4f5d46
+go run . tron track
 ```
 
 
