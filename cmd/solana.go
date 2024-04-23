@@ -17,7 +17,7 @@ var solanaCmd = &cobra.Command{
 }
 
 func init() {
-	solanaCmd.AddCommand(solana.GetTransactionCmd)
+	solanaCmd.AddCommand(solana.TrackCmd)
 	solanaCmd.AddCommand(solana.BalanceCmd)
 	solanaCmd.AddCommand(solana.TransferCmd)
 	rootCmd.AddCommand(solanaCmd)
