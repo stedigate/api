@@ -12,6 +12,7 @@ import (
 	"github.com/gagliardetto/solana-go/text"
 	"math/big"
 	"os"
+	"strconv"
 )
 
 func (s *Solana) GetContractEvents() {
@@ -24,24 +25,92 @@ func (s *Solana) GetContractEvents() {
 }
 
 func (s *Solana) subscribeToProgram() error {
-	txSig := solana.MustSignatureFromBase58("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-	sub, err := s.ws.SignatureSubscribe(
-		txSig,
+	// splToken := solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+	recent, err := s.rpc.GetRecentBlockhash(
+		context.Background(),
 		rpc.CommitmentFinalized,
 	)
 	if err != nil {
 		panic(err)
 	}
-	defer sub.Unsubscribe()
 
-	for {
-		got, err := sub.Recv()
+	lastSlot := uint64(recent.Context.Slot)
+	blocks, err := s.rpc.GetBlocks(context.Background(), uint64(recent.Context.Slot-3), &lastSlot, rpc.CommitmentFinalized)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, block := range blocks {
+		go s.getBlock(block)
+
+	}
+
+	return nil
+}
+
+func (s *Solana) getBlock(slot uint64) {
+	includeRewards := false
+	maxSupportedTransactionVersion := uint64(0)
+	b, err := s.rpc.GetBlockWithOpts(
+		context.Background(),
+		slot,
+		&rpc.GetBlockOpts{
+			Encoding:                       solana.EncodingBase64,
+			Commitment:                     rpc.CommitmentFinalized,
+			TransactionDetails:             rpc.TransactionDetailsFull,
+			Rewards:                        &includeRewards,
+			MaxSupportedTransactionVersion: &maxSupportedTransactionVersion,
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, tx := range b.Transactions {
+		trx, err := tx.GetTransaction()
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("got: %+v\n", got)
-		// s.config.USDTProgramAddress
-		spew.Dump(got)
+
+		isSplToken, isUsdc := false, false
+		for _, acc := range trx.Message.AccountKeys {
+			if acc.Equals(solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")) {
+				isSplToken = true
+			}
+			if acc.Equals(solana.MustPublicKeyFromBase58("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")) {
+				isUsdc = true
+			}
+		}
+
+		if isSplToken && isUsdc {
+			var startAmount, endAmount *big.Float
+			for _, pre := range tx.Meta.PreTokenBalances {
+				if pre.Mint.Equals(solana.MustPublicKeyFromBase58("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")) {
+					amount, err := strconv.ParseFloat(pre.UiTokenAmount.Amount, 64)
+					if err != nil {
+						panic(err)
+					}
+					startAmount = new(big.Float).SetFloat64(amount / 1e6)
+				}
+			}
+
+			for _, post := range tx.Meta.PostTokenBalances {
+				if post.Mint.Equals(solana.MustPublicKeyFromBase58("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")) {
+					amount, err := strconv.ParseFloat(post.UiTokenAmount.Amount, 64)
+					if err != nil {
+						panic(err)
+					}
+					endAmount = new(big.Float).SetFloat64(amount / 1e6)
+				}
+			}
+
+			fmt.Println("Start amount: ", startAmount)
+			fmt.Println("End amount: ", endAmount)
+			fmt.Println("Total amount: ", new(big.Float).Sub(endAmount, startAmount))
+			spew.Dump(tx.Transaction)
+			spew.Dump(trx)
+		}
+
 	}
 }
 

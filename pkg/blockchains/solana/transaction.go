@@ -8,15 +8,16 @@ import (
 
 type Transaction struct {
 	TxID            string
-	From            blockchains.Wallet
-	To              blockchains.Wallet
+	BlockNumber     uint64
+	From            Wallet
+	To              Wallet
 	Amount          big.Float
-	Currency        blockchains.TokenSymbol
 	Blockchain      blockchains.Blockchain
 	Status          blockchains.TransactionStatus
 	Timestamp       time.Time
-	FeeLimit        int
+	FeeLimit        uint64
 	ContractAddress string
+	Symbol          blockchains.TokenSymbol
 }
 
 func (t *Transaction) GetTxID() (string, error) {
@@ -24,7 +25,7 @@ func (t *Transaction) GetTxID() (string, error) {
 }
 
 func (t *Transaction) GetCurrency() (blockchains.TokenSymbol, error) {
-	return t.Currency, nil
+	return t.Symbol, nil
 }
 
 func (t *Transaction) GetBlockchain() (blockchains.Blockchain, error) {

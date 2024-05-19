@@ -5,7 +5,6 @@ type Wallet struct {
 	publicKey     string
 	Balance       float64
 	AddressBase58 string
-	AddressHex    string
 }
 
 func (w *Wallet) GetPrivateKey() string {
@@ -20,16 +19,8 @@ func (w *Wallet) GetBalance() float64 {
 	return w.Balance
 }
 
-func (w *Wallet) GetAddressBase58() string {
+func (w *Wallet) GetAddress() string {
 	return w.AddressBase58
-}
-
-func (w *Wallet) GetAddressHex() string {
-	if w.AddressHex == "" {
-		return convertBase58ToHex(w.AddressBase58)
-	}
-
-	return w.AddressHex
 }
 
 func convertBase58ToHex(base58 string) string {

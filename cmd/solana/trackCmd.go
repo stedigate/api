@@ -1,17 +1,25 @@
 package solana
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"github.com/davecgh/go-spew/spew"
+	goredis "github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 	"github.com/stedigate/core/internal/config"
 	"github.com/stedigate/core/pkg/blockchains/solana"
+	"github.com/stedigate/core/pkg/logger"
 	"github.com/stedigate/core/pkg/redis"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
+	"time"
 )
 
-// TrackCmd represents the tronTrc20Events command
-var TrackCmd = &cobra.Command{
+// TrackContractCmd represents the tronTrc20Events command
+var TrackContractCmd = &cobra.Command{
 	Use:   "track",
 	Short: "Fetches USDT/C events from the Solana blockchain.",
 	Long:  `Fetches USDT/C events from the Solana blockchain. It can be used to fetch all events from a specific contract address.`,
@@ -22,7 +30,7 @@ var TrackCmd = &cobra.Command{
 
 func init() {
 
-	TrackCmd.Flags().Int64VarP(&block, "block", "b", 1, "start block number")
+	TrackContractCmd.Flags().Uint64VarP(&block, "block", "b", 1, "start block number")
 
 	// Here you will define your flags and configuration settings.
 
@@ -44,17 +52,65 @@ func getTransaction() {
 		panic(err)
 	}
 
-	s, err := solana.New(cfg.Solana, r)
+	l := logger.NewLogger(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: false}))
+
+	s, err := solana.New(cfg.Solana, r, l)
 	if err != nil {
 		panic(err)
 	}
 
-	s.GetContractEvents()
+	l.Info("Starting Solana network scanner")
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	cacheKey := "solana:contracts:last_scanned_block"
+
+	r.SAdd(ctx, "solana:wallets", "GXgjFg6pDRHPSrJY4Y28mAKRirvxhD1NDg5pe7roF9CL")
+	r.SAdd(ctx, "solana:wallets", "6jmPKEMVd3yJWCbpQf1iLgGBVKSKZaX4J6CBqXPTyRvQ")
+
+	var lastSlot uint64
+	if block == 1 {
+		lastSlot, err = r.Get(ctx, cacheKey).Uint64()
+		switch {
+		case errors.Is(err, goredis.Nil):
+			fmt.Println("key does not exist")
+		case err != nil:
+			fmt.Println("Get failed", err)
+		}
+	} else {
+		lastSlot = block
+	}
+
+	if lastSlot == 0 {
+		lastSlot, err = s.GetCurrentBlock()
+		fmt.Println("current block", lastSlot)
+		if err != nil {
+			panic(err)
+		}
+		r.Set(ctx, cacheKey, lastSlot, 0)
+	}
+	l.Info("Latest scanned block", slog.Uint64("block_number", lastSlot))
+	go func() {
+		for {
+			events, err := s.GetContractTransactions(cfg.Solana.USDCAddress, "2zuyjyTVbSaCRjSnpYupn2BZQ5r7WG8NCftLX3ThoZMQfk2XgjAk2wwMP59Pq7dKZpw8ruyzBu6pQ3YvNa2A1MQK")
+			if err != nil {
+				panic(err)
+			}
+
+			spew.Dump(events)
+			lastSlot, err = r.Get(ctx, cacheKey).Uint64()
+			if err != nil {
+				panic(err)
+			}
+			l.Info("scanning blocks finished", slog.Uint64("last_scanned_block", lastSlot))
+			lastSlot++
+
+			<-time.After(5 * time.Second)
+		}
+	}()
+
 	<-c
-
-	// Perform any additional cleanup or logging as needed
-	log.Println("Tracking solana shutting down...")
+	cancel()
 }
